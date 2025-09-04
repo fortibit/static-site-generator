@@ -4,7 +4,7 @@ from htmlnode import HTMLNode, LeafNode, ParentNode
 
 
 class TestHTMLNode(unittest.TestCase):
-    # __init__
+    # --- __init__ ---
     def test_default_initialization(self):
         node = HTMLNode()
         self.assertIsNone(node.tag)
@@ -27,7 +27,7 @@ class TestHTMLNode(unittest.TestCase):
         self.assertEqual(node.children[0].value, "child1")
         self.assertEqual(node.children[1].value, "child2")
 
-    # props_to_html
+    # --- props_to_html ---
     def test_props_to_html_none(self):
         node = HTMLNode(tag="p", value="hi")
         self.assertEqual(node.props_to_html(), "")
@@ -46,16 +46,18 @@ class TestHTMLNode(unittest.TestCase):
         # attributes should appear in insertion order
         self.assertEqual(result, ' class="btn" id="main"')
 
-    # to_html
+    # --- to_html ---
     def test_to_html_raises_not_implemented(self):
         node = HTMLNode(tag="p", value="hi")
         with self.assertRaises(NotImplementedError):
             node.to_html()
 
-    # __repr__
+    # --- __repr__ ---
     def test_repr_with_all_fields(self):
         child = HTMLNode(tag="span", value="child")
-        node = HTMLNode(tag="div", value="parent", children=[child], props={"class": "container"})
+        node = HTMLNode(
+            tag="div", value="parent", children=[child], props={"class": "container"}
+        )
         expected = f"HTMLNode(div, parent, children: [{repr(child)}], {{'class': 'container'}})"
         self.assertEqual(repr(node), expected)
 
@@ -65,7 +67,7 @@ class TestHTMLNode(unittest.TestCase):
 
 
 class TestLeafNode(unittest.TestCase):
-    # __init__
+    # --- __init__ ---
     def test_initialization_with_values(self):
         node = LeafNode("p", "hello", {"id": "main"})
         self.assertEqual(node.tag, "p")
@@ -73,11 +75,11 @@ class TestLeafNode(unittest.TestCase):
         self.assertEqual(node.children, None)
         self.assertEqual(node.props, {"id": "main"})
 
-    # to_html
+    # --- to_html ---
     def test_to_html_with_tag_and_value(self):
         node = LeafNode("p", "hi")
         self.assertEqual(node.to_html(), "<p>hi</p>")
-            
+
     def test_to_html_with_props(self):
         node = LeafNode("b", "bold text", {"class": "container"})
         self.assertEqual(node.to_html(), '<b class="container">bold text</b>')
@@ -102,10 +104,23 @@ class TestLeafNode(unittest.TestCase):
         repr_str = repr(node)
         self.assertIn("i", repr_str)
         self.assertIn("italic", repr_str)
-        self.assertIn("{'style': 'color:red'}".replace("'",'"').replace('"', "'"), repr_str)
+        self.assertIn(
+            "{'style': 'color:red'}".replace("'", '"').replace('"', "'"), repr_str
+        )
 
-    
+
 class TestParentNode(unittest.TestCase):
+    # --- __init__ ---
+    def test_initialization_sets_values(self):
+        child1 = HTMLNode(tag="span", value="child1")
+        child2 = HTMLNode(tag="span", value="child2")
+        node = ParentNode("p", [child1, child2], {"style": "color:blue"})
+        self.assertEqual(node.tag, "p")
+        self.assertEqual(node.children, [child1, child2])
+        self.assertEqual(node.value, None)
+        self.assertEqual(node.props, {"style": "color:blue"})
+
+    # --- to_html ---
     def test_to_html_with_children(self):
         child_node = LeafNode("span", "child")
         parent_node = ParentNode("div", [child_node])
@@ -119,6 +134,45 @@ class TestParentNode(unittest.TestCase):
             parent_node.to_html(),
             "<div><span><b>grandchild</b></span></div>",
         )
+
+    def test_to_html_with_multiple_children(self):
+        child1_node = LeafNode("b", "bold")
+        child2_node = LeafNode(None, "plain")
+        parent_node = ParentNode("div", [child1_node, child2_node])
+        self.assertEqual(
+            parent_node.to_html(),
+            "<div><b>bold</b>plain</div>",
+        )
+
+    def test_to_html_with_props(self):
+        child1_node = LeafNode("span", "hi")
+        parent_node = ParentNode("div", [child1_node], {"class": "wrapper"})
+        self.assertEqual(
+            parent_node.to_html(),
+            '<div class="wrapper"><span>hi</span></div>',
+        )
+
+    def test_to_html_raises_if_no_tag(self):
+        node = ParentNode(None, [LeafNode("span", "hi")])
+        with self.assertRaises(ValueError) as ctx:
+            node.to_html()
+        self.assertEqual(str(ctx.exception), "Parent node must have a tag")
+
+    def test_to_html_raises_if_no_children(self):
+        node = ParentNode("div", [])
+        with self.assertRaises(ValueError) as ctx:
+            node.to_html()
+        self.assertEqual(str(ctx.exception), "Parent node must have children nodes")
+
+    # --- __repr__ ---
+    def test_repr_includes_tag_and_children(self):
+        child = LeafNode("span", "hi")
+        node = ParentNode("div", [child], {"style": "color:brown"})
+        repr_str = repr(node)
+        self.assertIn("ParentNode(", repr_str)
+        self.assertIn("div", repr_str)
+        self.assertIn(f"children: [{repr(child)}]", repr_str)
+        self.assertIn("{'style': 'color:brown'}", repr_str)
 
 
 if __name__ == "__main__":
